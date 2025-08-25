@@ -1,0 +1,7 @@
+{
+  "dns": ["8.8.8.8", "8.8.4.4"],
+  "dns-opts": ["ndots:0"],
+  "max-concurrent-downloads": 10,
+  "max-concurrent-uploads": 5,
+  "log-level": "info"
+}

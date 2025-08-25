@@ -1,0 +1,5 @@
+# DCRP API Server Dependencies - Simplified versions
+fastapi
+uvicorn
+httpx
+pydantic

@@ -1,0 +1,44 @@
+# Docker Compose override for network issues
+# This file adds DNS settings to help with connectivity
+
+services:
+  caddy:
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      
+  api-server:
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    build:
+      context: ./api-server
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+        
+  web-ui:
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    build:
+      context: ./web-ui
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+        
+  docker-monitor:
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    build:
+      context: ./docker-monitor
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+        
+  ssh-manager:
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    build:
+      context: ./ssh-manager
+      args:
+        - BUILDKIT_INLINE_CACHE=1

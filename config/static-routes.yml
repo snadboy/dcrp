@@ -1,0 +1,156 @@
+# DCRP Static Routes Configuration
+# Define static routes that are not auto-discovered from containers
+
+static_routes:
+  # Example: Route to external service
+  # external-api:
+  #   host: "api.example.com"
+  #   upstream: "external-api.company.com:443"
+  #   description: "External API service"
+  #   features:
+  #     force_ssl: true
+  #     websocket: false
+  #   headers:
+  #     request:
+  #       set:
+  #         X-Forwarded-Proto: ["https"]
+  #         X-Real-IP: ["{remote_host}"]
+  #     response:
+  #       set:
+  #         X-Frame-Options: ["DENY"]
+  
+  # Example: Internal service on different network
+  # internal-dashboard:
+  #   host: "internal.example.com"
+  #   upstream: "192.168.1.50:8080"
+  #   description: "Internal monitoring dashboard"
+  #   features:
+  #     force_ssl: true
+  #     websocket: false
+  #   middleware:
+  #     - "auth"
+  #     - "rate-limit"
+  
+  # Example: Load balanced service
+  # load-balanced-app:
+  #   host: "app.example.com"
+  #   upstreams:
+  #     - "app-server-1:3000"
+  #     - "app-server-2:3000"
+  #     - "app-server-3:3000"
+  #   description: "Load balanced application"
+  #   features:
+  #     force_ssl: true
+  #     websocket: true
+  #   load_balance:
+  #     policy: "round_robin"
+  #     health_checks: true
+  #     health_path: "/health"
+  
+  # Example: Static file server
+  # static-assets:
+  #   host: "static.example.com"
+  #   upstream: "cdn.example.com:443"
+  #   description: "Static asset server"
+  #   features:
+  #     force_ssl: true
+  #     websocket: false
+  #   headers:
+  #     response:
+  #       set:
+  #         Cache-Control: ["public, max-age=31536000"]
+  #         Access-Control-Allow-Origin: ["*"]
+
+# Route templates for common configurations
+templates:
+  # Basic web application
+  web_app:
+    features:
+      force_ssl: true
+      websocket: false
+    headers:
+      request:
+        set:
+          X-Forwarded-Proto: ["https"]
+          X-Real-IP: ["{remote_host}"]
+      response:
+        set:
+          X-Frame-Options: ["SAMEORIGIN"]
+          X-Content-Type-Options: ["nosniff"]
+  
+  # WebSocket application
+  websocket_app:
+    features:
+      force_ssl: true
+      websocket: true
+    headers:
+      request:
+        set:
+          Upgrade: ["{http.request.header.Upgrade}"]
+          Connection: ["{http.request.header.Connection}"]
+  
+  # API service
+  api_service:
+    features:
+      force_ssl: true
+      websocket: false
+    headers:
+      response:
+        set:
+          Access-Control-Allow-Origin: ["*"]
+          Access-Control-Allow-Methods: ["GET, POST, PUT, DELETE, OPTIONS"]
+          Access-Control-Allow-Headers: ["Content-Type, Authorization"]
+  
+  # Static file server
+  static_files:
+    features:
+      force_ssl: true
+      websocket: false
+    headers:
+      response:
+        set:
+          Cache-Control: ["public, max-age=86400"]
+          X-Content-Type-Options: ["nosniff"]
+
+# Security policies
+security:
+  # Default security headers for all routes
+  default_headers:
+    response:
+      set:
+        X-Frame-Options: ["SAMEORIGIN"]
+        X-Content-Type-Options: ["nosniff"]
+        X-XSS-Protection: ["1; mode=block"]
+        Referrer-Policy: ["strict-origin-when-cross-origin"]
+  
+  # Rate limiting (if supported by middleware)
+  rate_limit:
+    default:
+      requests: 100
+      window: "1m"
+    api:
+      requests: 1000
+      window: "1m"
+    static:
+      requests: 500  
+      window: "1m"
+
+# Monitoring and alerting for static routes
+monitoring:
+  # Health check configuration
+  health_checks:
+    enabled: true
+    interval: 300  # 5 minutes
+    timeout: 10
+    retries: 3
+    
+  # Alert configuration
+  alerts:
+    enabled: false
+    webhook_url: ""  # Set in .env file
+    
+    # Alert conditions
+    conditions:
+      - "health_check_failed"
+      - "response_time_high"
+      - "ssl_certificate_expiring"

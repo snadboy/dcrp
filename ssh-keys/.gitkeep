@@ -1,0 +1,10 @@
+# SSH Keys Directory
+# 
+# Place your SSH private keys in this directory for remote host access.
+# Make sure to set proper permissions (600) on private key files.
+#
+# Example:
+# ssh-keygen -t rsa -b 4096 -f ssh-keys/remote-host -N ""
+# chmod 600 ssh-keys/remote-host
+#
+# DO NOT commit actual SSH keys to version control!

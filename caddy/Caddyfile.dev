@@ -1,0 +1,93 @@
+# DCRP Caddyfile - Development version
+# For local development without Cloudflare DNS
+
+{
+    admin 0.0.0.0:2019
+    
+    # Enable structured logging
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+
+# Development routes for local testing
+localhost:80, localhost {
+    # Default response for localhost
+    header Content-Type "text/html; charset=utf-8"
+    respond `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCRP - Development Mode</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            max-width: 600px;
+        }
+        h1 { font-size: 3rem; margin-bottom: 20px; }
+        .links { margin-top: 30px; }
+        .links a {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .links a:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 DCRP Development</h1>
+        <p>Docker Container Reverse Proxy is running in development mode!</p>
+        <div class="links">
+            <a href="http://localhost:5000">Web UI</a>
+            <a href="http://localhost:8000/docs">API Docs</a>
+            <a href="http://localhost:2019/config">Caddy Config</a>
+        </div>
+        <small style="opacity: 0.8; margin-top: 20px; display: block;">
+            For production, configure your domain and Cloudflare DNS
+        </small>
+    </div>
+</body>
+</html>` 200
+}
+
+# Admin panel route (development)
+localhost:5000 {
+    reverse_proxy web-ui:5000
+}
+
+# API endpoint route (development)
+localhost:8000 {
+    reverse_proxy api-server:8000
+}
+
+# Catch-all for other ports/domains
+:80 {
+    respond "DCRP Development - Configure routes via API or Web UI" 200
+}

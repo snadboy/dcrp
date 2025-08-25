@@ -1,0 +1,189 @@
+# DCRP - Docker Container Reverse Proxy
+# Complete orchestration for all services
+
+services:
+  # Caddy Reverse Proxy with Cloudflare DNS + Let's Encrypt
+  caddy:
+    build: ./caddy
+    container_name: dcrp-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"  # Admin API port
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - LETS_ENCRYPT_EMAIL=${LETS_ENCRYPT_EMAIL}
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
+    networks:
+      - dcrp-network
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "dcrp.service=caddy"
+      - "dcrp.description=Reverse proxy with Cloudflare DNS + Let's Encrypt"
+
+  # API Server for route management
+  api-server:
+    build: ./api-server
+    container_name: dcrp-api-server
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - CADDY_ADMIN_URL=http://caddy:2019
+      - CADDY_SERVER=srv0
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    volumes:
+      - api_logs:/var/log/dcrp
+    networks:
+      - dcrp-network
+    depends_on:
+      caddy:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    labels:
+      - "dcrp.service=api-server"
+      - "dcrp.description=FastAPI service for route management"
+
+  # Web UI for administration
+  web-ui:
+    build: ./web-ui
+    container_name: dcrp-web-ui
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - API_BASE_URL=http://api-server:8000
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=5000
+      - SECRET_KEY=${SECRET_KEY:-dcrp-default-secret-change-in-production}
+      - DEBUG=false
+    volumes:
+      - web_logs:/var/log/dcrp
+    networks:
+      - dcrp-network
+    depends_on:
+      api-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    labels:
+      - "dcrp.service=web-ui"
+      - "dcrp.description=Flask web interface for route administration"
+
+  # Docker Monitor Service (for auto-discovery)
+  docker-monitor:
+    build: ./docker-monitor
+    container_name: dcrp-docker-monitor
+    restart: unless-stopped
+    environment:
+      - API_BASE_URL=http://api-server:8000
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - MONITOR_INTERVAL=30
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./config:/app/config:ro
+      - ./ssh-keys:/app/ssh-keys:ro
+      - monitor_logs:/var/log/dcrp
+    networks:
+      - dcrp-network
+    depends_on:
+      api-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://api-server:8000/health')"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "dcrp.service=docker-monitor"
+      - "dcrp.description=Container auto-discovery and route management"
+
+  # SSH Manager Service (for multi-host support)
+  ssh-manager:
+    build: ./ssh-manager
+    container_name: dcrp-ssh-manager
+    restart: unless-stopped
+    environment:
+      - API_BASE_URL=http://api-server:8000
+      - SSH_KEY_PATH=/app/ssh-keys/id_rsa
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./config:/app/config:ro
+      - ./ssh-keys:/app/ssh-keys:ro
+      - ssh_logs:/var/log/dcrp
+    networks:
+      - dcrp-network
+    depends_on:
+      api-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "print('SSH Manager is running')"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "dcrp.service=ssh-manager"
+      - "dcrp.description=SSH host management for multi-host deployments"
+
+networks:
+  dcrp-network:
+    driver: bridge
+    name: dcrp-network
+    labels:
+      - "dcrp.network=main"
+
+volumes:
+  # Caddy data persistence
+  caddy_data:
+    name: dcrp-caddy-data
+    labels:
+      - "dcrp.volume=caddy-data"
+  caddy_config:
+    name: dcrp-caddy-config
+    labels:
+      - "dcrp.volume=caddy-config"
+  
+  # Log volumes for each service
+  caddy_logs:
+    name: dcrp-caddy-logs
+    labels:
+      - "dcrp.volume=caddy-logs"
+  api_logs:
+    name: dcrp-api-logs
+    labels:
+      - "dcrp.volume=api-logs"
+  web_logs:
+    name: dcrp-web-logs
+    labels:
+      - "dcrp.volume=web-logs"
+  monitor_logs:
+    name: dcrp-monitor-logs
+    labels:
+      - "dcrp.volume=monitor-logs"
+  ssh_logs:
+    name: dcrp-ssh-logs
+    labels:
+      - "dcrp.volume=ssh-logs"

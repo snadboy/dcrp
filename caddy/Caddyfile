@@ -1,0 +1,154 @@
+# DCRP Caddy Configuration with Cloudflare DNS + Let's Encrypt
+{
+    admin 0.0.0.0:2019
+    email {$LETS_ENCRYPT_EMAIL}
+    
+    # Enable structured logging
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+
+# Wildcard certificate with Cloudflare DNS challenge
+*.{$DOMAIN} {
+    tls {
+        dns cloudflare {$CLOUDFLARE_API_TOKEN}
+        resolvers 1.1.1.1 1.0.0.1
+    }
+    
+    # Default catchall response for unconfigured subdomains
+    header Content-Type "text/html; charset=utf-8"
+    respond `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Not Configured - {$DOMAIN}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            max-width: 600px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        h1 {
+            font-size: clamp(2rem, 5vw, 3rem);
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        .domain {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 10px 0;
+            font-size: 1.1rem;
+            word-break: break-all;
+        }
+        .message {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-top: 20px;
+        }
+        .admin {
+            margin-top: 30px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .status {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid rgba(255, 193, 7, 0.5);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        @media (max-width: 480px) {
+            .container { padding: 20px; }
+            h1 { font-size: 2rem; }
+            .message { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚧 Service Not Configured</h1>
+        <div class="domain">{http.request.host}</div>
+        <div class="status">
+            <strong>Status:</strong> No route configured for this subdomain
+        </div>
+        <div class="message">
+            This subdomain exists but no service has been configured for it yet.
+            <br><br>
+            If you're expecting a service here, please check the DCRP admin panel or contact your administrator to add a route configuration.
+        </div>
+        <div class="admin">
+            DCRP (Docker Container Reverse Proxy) • Powered by Caddy Server
+        </div>
+    </div>
+</body>
+</html>` 503
+}
+
+# Root domain redirect to a specific service or admin panel
+{$DOMAIN} {
+    tls {
+        dns cloudflare {$CLOUDFLARE_API_TOKEN}
+        resolvers 1.1.1.1 1.0.0.1
+    }
+    
+    # Redirect to admin panel or main service
+    redir https://admin.{$DOMAIN}{uri} permanent
+}
+
+# Admin panel for DCRP management
+admin.{$DOMAIN} {
+    tls {
+        dns cloudflare {$CLOUDFLARE_API_TOKEN}
+        resolvers 1.1.1.1 1.0.0.1
+    }
+    
+    reverse_proxy web-ui:5000
+}
+
+# API endpoint for route management
+api.{$DOMAIN} {
+    tls {
+        dns cloudflare {$CLOUDFLARE_API_TOKEN}
+        resolvers 1.1.1.1 1.0.0.1
+    }
+    
+    reverse_proxy api-server:8000
+}
+
+# Catch-all for unmatched domains on HTTPS
+:443 {
+    tls internal
+    respond `<!DOCTYPE html>
+<html><head><title>Domain Not Configured</title></head>
+<body><h1>404 - Domain Not Configured</h1>
+<p>This domain is not configured in DCRP.</p></body></html>` 404
+}
+
+# Catch-all for unmatched domains on HTTP (redirect to HTTPS)
+:80 {
+    redir https://{host}{uri} permanent
+}

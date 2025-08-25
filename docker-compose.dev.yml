@@ -1,0 +1,50 @@
+# DCRP Development - Core services only
+# Use this for initial testing and development
+
+services:
+  # Caddy Reverse Proxy
+  caddy:
+    build: ./caddy
+    container_name: dcrp-caddy-dev
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "2019:2019"
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data_dev:/data
+      - caddy_config_dev:/config
+      - caddy_logs_dev:/var/log/caddy
+    networks:
+      - dcrp-dev-network
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+  # API Server (run locally for development)
+  # api-server:
+  #   build: ./api-server
+  #   container_name: dcrp-api-dev
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     - CADDY_ADMIN_URL=http://caddy:2019
+  #   networks:
+  #     - dcrp-dev-network
+  #   depends_on:
+  #     - caddy
+
+networks:
+  dcrp-dev-network:
+    driver: bridge
+    name: dcrp-dev-network
+
+volumes:
+  caddy_data_dev:
+    name: dcrp-caddy-data-dev
+  caddy_config_dev:
+    name: dcrp-caddy-config-dev
+  caddy_logs_dev:
+    name: dcrp-caddy-logs-dev

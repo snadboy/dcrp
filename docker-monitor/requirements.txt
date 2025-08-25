@@ -1,0 +1,4 @@
+# DCRP Docker Monitor Dependencies - SSH-based approach
+snadboy-ssh-docker>=0.1.1
+httpx
+PyYAML

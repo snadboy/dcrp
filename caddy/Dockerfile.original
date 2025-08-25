@@ -1,0 +1,21 @@
+# DCRP Caddy with Cloudflare DNS Plugin
+FROM caddy:2.7.6-builder AS builder
+
+# Build Caddy with Cloudflare DNS plugin
+RUN xcaddy build \
+    --with github.com/caddy-dns/cloudflare
+
+FROM caddy:2.7.6
+
+# Copy the custom Caddy binary
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+
+# Create log directory with proper permissions
+RUN mkdir -p /var/log/caddy
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD caddy version || exit 1
+
+# Default command
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

@@ -1,0 +1,4 @@
+# DCRP SSH Manager Dependencies - Simplified versions
+paramiko
+httpx
+PyYAML
