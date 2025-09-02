@@ -29,14 +29,15 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY monitor.py .
+COPY monitor.py setup_ssh.py start.sh ./
 
 # Create non-root user with home directory for SSH config
 RUN groupadd -r monitor && useradd -r -g monitor monitor -m -d /home/monitor && \
     mkdir -p /home/monitor/.ssh && \
     chown -R monitor:monitor /app /home/monitor && \
-    chmod 700 /home/monitor/.ssh
+    chmod 700 /home/monitor/.ssh && \
+    chmod +x start.sh
 USER monitor
 
-# Run the application
-CMD ["python", "monitor.py"]
+# Run the application with SSH setup
+CMD ["./start.sh"]

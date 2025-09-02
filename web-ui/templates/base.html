@@ -5,12 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}DCRP Admin Panel{% endblock %}</title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    
+    <!-- Custom CSS - loaded last to override Bootstrap -->
+    <link href="{{ url_for('static', filename='css/style.css') }}?v=1756158003" rel="stylesheet">
     
     {% block head %}{% endblock %}
 </head>
@@ -36,12 +40,31 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'new_route_form' %}active{% endif %}" 
-                           href="{{ url_for('new_route_form') }}">
-                            <i class="bi bi-plus-circle me-1"></i>Add Route
+                        <a class="nav-link {% if request.endpoint in ['hosts_dashboard', 'new_host_form', 'edit_host_form'] %}active{% endif %}" 
+                           href="{{ url_for('hosts_dashboard') }}">
+                            <i class="bi bi-hdd-network me-1"></i>Hosts
                         </a>
                     </li>
                 </ul>
+                
+                <!-- Theme Switcher -->
+                <div class="dropdown me-3">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" id="theme-switcher" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-sun-fill" id="theme-icon"></i>
+                        <span id="theme-text">Light</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="theme-switcher">
+                        <li><a class="dropdown-item" href="#" data-theme="light">
+                            <i class="bi bi-sun-fill me-2"></i>Light
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" data-theme="dark">
+                            <i class="bi bi-moon-fill me-2"></i>Dark
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" data-theme="system">
+                            <i class="bi bi-laptop me-2"></i>System
+                        </a></li>
+                    </ul>
+                </div>
                 
                 <!-- Status indicator -->
                 <div class="navbar-text" id="status-indicator">
@@ -90,14 +113,19 @@
                 {% if api_url %}
                     • API: <code>{{ api_url }}</code>
                 {% endif %}
+                • Last edited: {{ current_template_mtime }}
             </small>
         </div>
     </footer>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- jQuery (for column resizing functionality) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
     <!-- Custom JS -->
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=1756158003"></script>
     
     {% block scripts %}{% endblock %}
 </body>

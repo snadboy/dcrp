@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if action == 'create' %}Add Host{% else %}Edit Host{% endif %} - DCRP Admin Panel
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex align-items-center mb-4">
+            <a href="{{ url_for('hosts_dashboard') }}" class="btn btn-outline-secondary me-3">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <h1 class="h2 mb-0">
+                {% if action == 'create' %}
+                    <i class="bi bi-plus-circle me-2"></i>Add Docker Host
+                {% else %}
+                    <i class="bi bi-pencil me-2"></i>Edit Docker Host
+                {% endif %}
+            </h1>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Host Configuration</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" 
+                      action="{% if action == 'create' %}{{ url_for('create_host') }}{% else %}{{ url_for('update_host', host_id=host.host_id) }}{% endif %}">
+                    
+                    <!-- Host Identification -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="host_id" class="form-label">
+                                <i class="bi bi-tag me-1"></i>Host ID
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="host_id" 
+                                   name="host_id" 
+                                   placeholder="e.g. prod-server-1"
+                                   value="{{ host.host_id if host else '' }}"
+                                   {% if action == 'edit' %}readonly{% endif %}
+                                   required>
+                            <div class="form-text">
+                                Unique identifier for this host
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="hostname" class="form-label">
+                                <i class="bi bi-globe me-1"></i>Hostname/IP
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="hostname" 
+                                   name="hostname" 
+                                   placeholder="192.168.1.100 or server.example.com"
+                                   value="{{ host.hostname if host else '' }}"
+                                   required>
+                            <div class="form-text">
+                                IP address or hostname for SSH connection
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SSH Connection Details -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <label for="user" class="form-label">
+                                <i class="bi bi-person me-1"></i>SSH User
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="user" 
+                                   name="user" 
+                                   placeholder="revp"
+                                   value="{{ host.user if host else 'revp' }}"
+                                   required>
+                            <div class="form-text">
+                                SSH username for connection
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="port" class="form-label">
+                                <i class="bi bi-ethernet me-1"></i>SSH Port
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="port" 
+                                   name="port" 
+                                   placeholder="22"
+                                   value="{{ host.port if host else 22 }}"
+                                   min="1" max="65535">
+                            <div class="form-text">
+                                SSH port (default: 22)
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="key_file" class="form-label">
+                                <i class="bi bi-key me-1"></i>SSH Key File
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="key_file" 
+                                   name="key_file" 
+                                   placeholder="/app/ssh-keys/host_key"
+                                   value="{{ host.key_file if host else '/app/ssh-keys/docker_monitor_key' }}">
+                            <div class="form-text">
+                                Path to SSH private key
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-4">
+                        <label for="description" class="form-label">
+                            <i class="bi bi-card-text me-1"></i>Description
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="description" 
+                               name="description" 
+                               placeholder="Production Docker host in datacenter-1"
+                               value="{{ host.description if host else '' }}">
+                        <div class="form-text">
+                            Optional description for this host
+                        </div>
+                    </div>
+
+                    <!-- Enable/Disable -->
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="enabled" 
+                                   name="enabled"
+                                   {% if (host and host.enabled) or not host %}checked{% endif %}>
+                            <label class="form-check-label" for="enabled">
+                                <i class="bi bi-check-circle me-1"></i>Enable monitoring for this host
+                            </label>
+                            <div class="form-text">
+                                When enabled, this host will be monitored for Docker containers
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview Section -->
+                    <div class="mb-4">
+                        <h6 class="text-muted">
+                            <i class="bi bi-eye me-1"></i>Connection Preview
+                        </h6>
+                        <div class="card border-info" style="background-color: #f8f9fa;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-terminal text-info me-2"></i>
+                                    <code id="preview-command" class="text-info bg-white">ssh user@hostname -p 22 -i /path/to/key</code>
+                                </div>
+                                <div class="mt-2">
+                                    <small id="preview-description" class="text-muted">SSH connection command for this host</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            {% if action == 'create' %}
+                                <i class="bi bi-plus-circle me-1"></i>Add Host
+                            {% else %}
+                                <i class="bi bi-check-circle me-1"></i>Update Host
+                            {% endif %}
+                        </button>
+                        <a href="{{ url_for('hosts_dashboard') }}" class="btn btn-secondary">
+                            Cancel
+                        </a>
+                        {% if action == 'edit' %}
+                        <button type="button" 
+                                class="btn btn-outline-info ms-auto"
+                                onclick="testConnection('{{ host.host_id }}')">
+                            <i class="bi bi-wifi me-1"></i>Test Connection
+                        </button>
+                        <button type="button" 
+                                class="btn btn-outline-danger"
+                                onclick="confirmDelete('{{ host.host_id }}', '{{ host.hostname }}')">
+                            <i class="bi bi-trash me-1"></i>Remove Host
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Help Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-question-circle me-1"></i>SSH Setup Guide
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-12 col-lg-6">
+                        <h6 class="text-primary mb-3">
+                            <i class="bi bi-key me-1"></i>SSH Key Setup:
+                        </h6>
+                        <div class="d-flex flex-column gap-2">
+                            <div>
+                                <span class="badge bg-primary me-2">1</span>
+                                <code class="me-2">ssh-keygen -t rsa -b 4096</code>
+                                <small class="text-muted">Generate SSH key pair</small>
+                            </div>
+                            <div>
+                                <span class="badge bg-primary me-2">2</span>
+                                <code class="me-2">ssh-copy-id user@host</code>
+                                <small class="text-muted">Copy public key to remote host</small>
+                            </div>
+                            <div>
+                                <span class="badge bg-primary me-2">3</span>
+                                <code class="me-2">ssh user@host</code>
+                                <small class="text-muted">Test connection</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <h6 class="text-success mb-3">
+                            <i class="bi bi-shield-check me-1"></i>Requirements:
+                        </h6>
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-check text-success me-2"></i>
+                                <small>Docker installed on remote host</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-check text-success me-2"></i>
+                                <small>SSH user has Docker permissions</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-check text-success me-2"></i>
+                                <small>SSH key-based authentication</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal (if editing) -->
+{% if action == 'edit' %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Host Removal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Are you sure you want to remove this Docker host?</p>
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Container monitoring for this host will stop immediately.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{{ url_for('delete_host', host_id=host.host_id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Remove Host
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updatePreview() {
+    const hostname = document.getElementById('hostname').value || 'hostname';
+    const user = document.getElementById('user').value || 'user';
+    const port = document.getElementById('port').value || '22';
+    const keyFile = document.getElementById('key_file').value || '/path/to/key';
+    const description = document.getElementById('description').value || 'SSH connection command for this host';
+    
+    // Update command preview
+    document.getElementById('preview-command').textContent = `ssh ${user}@${hostname} -p ${port} -i ${keyFile}`;
+    document.getElementById('preview-description').textContent = description;
+}
+
+function testConnection(hostId) {
+    // Show loading state
+    const button = event.target;
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Testing...';
+    
+    // Create form and submit
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/hosts/${hostId}/test`;
+    form.style.display = 'none';
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function confirmDelete(hostId, hostname) {
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+// Update preview on input changes
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = ['hostname', 'user', 'port', 'key_file', 'description'];
+    inputs.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', updatePreview);
+            element.addEventListener('change', updatePreview);
+        }
+    });
+    
+    // Initial preview update
+    updatePreview();
+});
+</script>
+{% endblock %}

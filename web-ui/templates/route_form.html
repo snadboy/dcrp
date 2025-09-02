@@ -5,6 +5,56 @@
 {% endblock %}
 
 {% block content %}
+{% if action == 'edit' and route and route.source == 'monitor' %}
+<!-- Monitor Route Read-Only View -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex align-items-center mb-4">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary me-3">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <h1 class="h2 mb-0">
+                <i class="bi bi-robot me-2"></i>Auto-Discovered Route
+            </h1>
+        </div>
+
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>This route is automatically managed by Docker Monitor.</strong> 
+            It cannot be edited manually as it's synchronized from Docker container labels.
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Route Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small text-muted">Host/Domain</label>
+                        <div class="form-control-plaintext"><strong>{{ route.host }}</strong></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small text-muted">Route ID</label>
+                        <div class="form-control-plaintext"><code>{{ route.route_id }}</code></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">Protocol</label>
+                        <div class="form-control-plaintext">
+                            <span class="badge bg-{{ 'success' if route.protocol == 'https' else 'primary' }}">{{ route.protocol.upper() }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small text-muted">Upstream Service</label>
+                        <div class="form-control-plaintext"><code>{{ route.protocol.upper() }}://{{ route.upstream }}</code></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Regular Route Edit/Create Form -->
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="d-flex align-items-center mb-4">
@@ -66,60 +116,53 @@
 
                     <!-- Upstream Configuration -->
                     <div class="mb-4">
-                        <label for="upstream" class="form-label">
+                        <label class="form-label">
                             <i class="bi bi-hdd-network me-1"></i>Upstream Service
                             <span class="text-danger">*</span>
                         </label>
-                        <input type="text" 
-                               class="form-control" 
-                               id="upstream" 
-                               name="upstream" 
-                               placeholder="backend-service:8080 or 192.168.1.100:3000"
-                               value="{{ route.upstream if route else '' }}"
-                               required>
-                        <div class="form-text">
-                            Backend service address (hostname:port or IP:port)
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <label for="protocol" class="form-label small">Protocol</label>
+                                <select class="form-select" id="protocol" name="protocol" required>
+                                    <option value="http" {{ 'selected' if route and route.upstream_protocol == 'http' else 'selected' if not route else '' }}>HTTP</option>
+                                    <option value="https" {{ 'selected' if route and route.upstream_protocol == 'https' else '' }}>HTTPS</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="hostname" class="form-label small">Hostname/IP</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="hostname" 
+                                       name="hostname" 
+                                       placeholder="backend-service or 192.168.1.100"
+                                       value="{% if route %}{{ route.upstream_host }}{% endif %}"
+                                       required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="port" class="form-label small">Port</label>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="port" 
+                                       name="port" 
+                                       placeholder="8080"
+                                       min="1" 
+                                       max="65535"
+                                       value="{% if route %}{{ route.upstream_port }}{% endif %}"
+                                       required>
+                            </div>
+                        </div>
+                        <!-- Hidden field for backward compatibility -->
+                        <input type="hidden" id="upstream" name="upstream" value="{{ route.upstream if route else '' }}">
+                        <div class="form-text mt-2">
+                            Backend service connection details
                         </div>
                     </div>
 
-                    <!-- Features Configuration -->
+                    <!-- Global Features Notice -->
                     <div class="mb-4">
-                        <label class="form-label">
-                            <i class="bi bi-gear me-1"></i>Features
-                        </label>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" 
-                                           type="checkbox" 
-                                           id="force_ssl" 
-                                           name="force_ssl"
-                                           {% if route and route.force_ssl %}checked{% endif %}>
-                                    <label class="form-check-label" for="force_ssl">
-                                        <i class="bi bi-shield-lock me-1 text-success"></i>
-                                        Force HTTPS
-                                    </label>
-                                    <div class="form-text">
-                                        Automatically redirect HTTP to HTTPS
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" 
-                                           type="checkbox" 
-                                           id="websocket" 
-                                           name="websocket"
-                                           {% if route and route.websocket %}checked{% endif %}>
-                                    <label class="form-check-label" for="websocket">
-                                        <i class="bi bi-arrow-repeat me-1 text-info"></i>
-                                        WebSocket Support
-                                    </label>
-                                    <div class="form-text">
-                                        Enable WebSocket connections
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Automatic Features:</strong> All routes automatically include HTTPS enforcement and WebSocket support via Caddy's global configuration.
                         </div>
                     </div>
 
@@ -128,16 +171,16 @@
                         <h6 class="text-muted">
                             <i class="bi bi-eye me-1"></i>Preview
                         </h6>
-                        <div class="card bg-light">
+                        <div class="card border-primary" style="background-color: #f8f9fa;">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <i class="bi bi-arrow-right text-primary me-2"></i>
-                                    <code id="preview-url">https://your-host.domain.com</code>
+                                    <code id="preview-url" class="text-primary bg-white">https://your-host.domain.com</code>
                                     <i class="bi bi-arrow-right text-primary mx-2"></i>
-                                    <code id="preview-upstream">your-service:port</code>
+                                    <code id="preview-upstream" class="text-success bg-white">your-service:port</code>
                                 </div>
                                 <div class="mt-2">
-                                    <small id="preview-features" class="text-muted">Basic reverse proxy</small>
+                                    <small id="preview-features" class="text-muted">HTTPS enforced, WebSocket enabled</small>
                                 </div>
                             </div>
                         </div>
@@ -176,21 +219,49 @@
             </div>
             <div class="card-body">
                 <div class="row g-4">
-                    <div class="col-md-6">
-                        <h6>Host Examples:</h6>
-                        <ul class="list-unstyled small">
-                            <li><code>app.example.com</code> - Specific subdomain</li>
-                            <li><code>*.example.com</code> - Wildcard subdomain</li>
-                            <li><code>example.com</code> - Root domain</li>
-                        </ul>
+                    <div class="col-12 col-lg-6">
+                        <h6 class="text-primary mb-3">
+                            <i class="bi bi-globe me-1"></i>Host Examples:
+                        </h6>
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-primary me-2">1</span>
+                                <code class="me-2">app.example.com</code>
+                                <small class="text-muted">Specific subdomain</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-primary me-2">2</span>
+                                <code class="me-2">*.example.com</code>
+                                <small class="text-muted">Wildcard subdomain</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-primary me-2">3</span>
+                                <code class="me-2">example.com</code>
+                                <small class="text-muted">Root domain</small>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <h6>Upstream Examples:</h6>
-                        <ul class="list-unstyled small">
-                            <li><code>app-backend:3000</code> - Container service</li>
-                            <li><code>192.168.1.100:8080</code> - IP address</li>
-                            <li><code>localhost:5000</code> - Local service</li>
-                        </ul>
+                    <div class="col-12 col-lg-6">
+                        <h6 class="text-success mb-3">
+                            <i class="bi bi-hdd-network me-1"></i>Upstream Examples:
+                        </h6>
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-success me-2">1</span>
+                                <code class="me-2">app-backend:3000</code>
+                                <small class="text-muted">Container service</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-success me-2">2</span>
+                                <code class="me-2">192.168.1.100:8080</code>
+                                <small class="text-muted">IP address</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-success me-2">3</span>
+                                <code class="me-2">localhost:5000</code>
+                                <small class="text-muted">Local service</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -225,32 +296,40 @@
         </div>
     </div>
 </div>
-{% endif %}
-
-{% endblock %}
+{% endif %}  <!-- End of delete modal if -->
+{% endif %}  <!-- End of regular route form (else block) -->
+{% endblock %}  <!-- End of content block -->
 
 {% block scripts %}
 <script>
+function updateUpstream() {
+    const protocol = document.getElementById('protocol').value || 'http';
+    const hostname = document.getElementById('hostname').value || '';
+    const port = document.getElementById('port').value || '';
+    
+    // Combine into upstream format (hostname:port)
+    const upstream = hostname && port ? `${hostname}:${port}` : '';
+    document.getElementById('upstream').value = upstream;
+    
+    // Update preview
+    updatePreview();
+}
+
 function updatePreview() {
     const host = document.getElementById('host').value || 'your-host.domain.com';
-    const upstream = document.getElementById('upstream').value || 'your-service:port';
-    const forceSSL = document.getElementById('force_ssl').checked;
-    const websocket = document.getElementById('websocket').checked;
+    const protocol = document.getElementById('protocol').value || 'http';
+    const hostname = document.getElementById('hostname').value || 'your-service';
+    const port = document.getElementById('port').value || 'port';
     
-    // Update URL preview
-    const protocol = forceSSL ? 'https' : 'http/https';
-    document.getElementById('preview-url').textContent = `${protocol}://${host}`;
-    document.getElementById('preview-upstream').textContent = upstream;
+    // Update URL preview (always HTTPS due to global Caddy config)
+    document.getElementById('preview-url').textContent = `https://${host}`;
     
-    // Update features preview
-    const features = [];
-    if (forceSSL) features.push('Force HTTPS');
-    if (websocket) features.push('WebSocket');
+    // Update upstream preview with protocol
+    const upstreamDisplay = hostname && port ? `${protocol.toUpperCase()}://${hostname}:${port}` : `${protocol.toUpperCase()}://your-service:port`;
+    document.getElementById('preview-upstream').textContent = upstreamDisplay;
     
-    const featuresText = features.length > 0 
-        ? features.join(', ') 
-        : 'Basic reverse proxy';
-    document.getElementById('preview-features').textContent = featuresText;
+    // Update features preview (always the same due to global config)
+    document.getElementById('preview-features').textContent = 'HTTPS enforced, WebSocket enabled';
 }
 
 function confirmDelete(routeId, host) {
@@ -260,17 +339,25 @@ function confirmDelete(routeId, host) {
 
 // Update preview on input changes
 document.addEventListener('DOMContentLoaded', function() {
-    const inputs = ['host', 'upstream', 'force_ssl', 'websocket'];
-    inputs.forEach(id => {
+    // Host field updates
+    const hostElement = document.getElementById('host');
+    if (hostElement) {
+        hostElement.addEventListener('input', updatePreview);
+        hostElement.addEventListener('change', updatePreview);
+    }
+    
+    // Upstream component fields
+    const upstreamFields = ['protocol', 'hostname', 'port'];
+    upstreamFields.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
-            element.addEventListener('input', updatePreview);
-            element.addEventListener('change', updatePreview);
+            element.addEventListener('input', updateUpstream);
+            element.addEventListener('change', updateUpstream);
         }
     });
     
-    // Initial preview update
-    updatePreview();
+    // Initial upstream and preview update
+    updateUpstream();
 });
 </script>
 {% endblock %}

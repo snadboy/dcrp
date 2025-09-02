@@ -11,17 +11,22 @@ services:
       - "80:80"
       - "443:443"
       - "2019:2019"  # Admin API port
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile", "--resume=false"]
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks:
+      - dcrp-network
     environment:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
       - LETS_ENCRYPT_EMAIL=${LETS_ENCRYPT_EMAIL}
       - DOMAIN=${DOMAIN}
+      - DEBUG=true
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
       - caddy_logs:/var/log/caddy
-    networks:
-      - dcrp-network
     healthcheck:
       test: ["CMD", "caddy", "version"]
       interval: 30s
@@ -44,8 +49,12 @@ services:
       - CADDY_SERVER=srv0
       - API_HOST=0.0.0.0
       - API_PORT=8000
+      - DNS_RESOLVER=192.168.86.76:53
+      - CONFIG_PATH=/config
     volumes:
+      - ./config:/config
       - api_logs:/var/log/dcrp
+      - caddy_logs:/var/log/caddy:ro
     networks:
       - dcrp-network
     depends_on:
@@ -100,7 +109,7 @@ services:
       - API_BASE_URL=http://api-server:8000
       - DOCKER_HOST=unix:///var/run/docker.sock
       - MONITOR_INTERVAL=30
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./config:/app/config:ro
       - ./ssh-keys:/app/ssh-keys:ro
@@ -111,7 +120,7 @@ services:
       api-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://api-server:8000/health')"]
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://api-server:8000/health')"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -147,6 +156,36 @@ services:
     labels:
       - "dcrp.service=ssh-manager"
       - "dcrp.description=SSH host management for multi-host deployments"
+
+  # UI Test Agent (for automated UI/UX testing)
+  ui-test-agent:
+    build: ./ui-test-agent
+    container_name: dcrp-ui-test-agent
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - WEB_UI_URL=http://web-ui:5000
+      - API_SERVER_URL=http://api-server:8000
+      - LOG_LEVEL=INFO
+    volumes:
+      - ui_test_results:/app/test-results
+      - ui_test_screenshots:/app/test-results/screenshots
+      - ui_test_reports:/app/test-results/reports
+    networks:
+      - dcrp-network
+    depends_on:
+      web-ui:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "dcrp.service=ui-test-agent"
+      - "dcrp.description=Automated UI/UX testing using Playwright MCP"
 
 networks:
   dcrp-network:
@@ -187,3 +226,15 @@ volumes:
     name: dcrp-ssh-logs
     labels:
       - "dcrp.volume=ssh-logs"
+  ui_test_results:
+    name: dcrp-ui-test-results
+    labels:
+      - "dcrp.volume=ui-test-results"
+  ui_test_screenshots:
+    name: dcrp-ui-test-screenshots
+    labels:
+      - "dcrp.volume=ui-test-screenshots"
+  ui_test_reports:
+    name: dcrp-ui-test-reports
+    labels:
+      - "dcrp.volume=ui-test-reports"

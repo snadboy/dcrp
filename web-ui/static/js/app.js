@@ -1,6 +1,9 @@
 // DCRP Web UI JavaScript
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize theme
+    initializeTheme();
+    
     // Initialize tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -23,6 +26,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Check status every 30 seconds
     setInterval(checkSystemStatus, 30000);
+    
+    // Setup theme switcher
+    setupThemeSwitcher();
 });
 
 /**
@@ -246,6 +252,94 @@ window.addEventListener('unhandledrejection', function(event) {
     showToast('Network error occurred', 'error');
 });
 
+/**
+ * Initialize theme on page load
+ */
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('dcrp-theme') || 'system';
+    applyTheme(savedTheme);
+}
+
+/**
+ * Setup theme switcher dropdown
+ */
+function setupThemeSwitcher() {
+    const themeDropdownItems = document.querySelectorAll('[data-theme]');
+    
+    themeDropdownItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const theme = this.dataset.theme;
+            localStorage.setItem('dcrp-theme', theme);
+            applyTheme(theme);
+        });
+    });
+}
+
+/**
+ * Apply the selected theme
+ * @param {string} theme - 'light', 'dark', or 'system'
+ */
+function applyTheme(theme) {
+    const html = document.documentElement;
+    const themeIcon = document.getElementById('theme-icon');
+    const themeText = document.getElementById('theme-text');
+    
+    // Remove existing theme classes
+    html.classList.remove('theme-light', 'theme-dark');
+    
+    let effectiveTheme = theme;
+    
+    if (theme === 'system') {
+        // Check system preference
+        const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        effectiveTheme = systemPrefersDark ? 'dark' : 'light';
+    }
+    
+    // Apply theme class
+    html.classList.add(`theme-${effectiveTheme}`);
+    
+    // Update button icon and text
+    if (themeIcon && themeText) {
+        switch (theme) {
+            case 'light':
+                themeIcon.className = 'bi bi-sun-fill';
+                themeText.textContent = 'Light';
+                break;
+            case 'dark':
+                themeIcon.className = 'bi bi-moon-fill';
+                themeText.textContent = 'Dark';
+                break;
+            case 'system':
+                themeIcon.className = 'bi bi-laptop';
+                themeText.textContent = 'System';
+                break;
+        }
+    }
+    
+    // Update active state in dropdown
+    document.querySelectorAll('[data-theme]').forEach(item => {
+        const itemTheme = item.dataset.theme;
+        if (itemTheme === theme) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
+/**
+ * Listen for system theme changes
+ */
+if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        const currentTheme = localStorage.getItem('dcrp-theme') || 'system';
+        if (currentTheme === 'system') {
+            applyTheme('system');
+        }
+    });
+}
+
 // Utility functions for specific components
 window.DCRP = {
     checkSystemStatus,
@@ -256,5 +350,6 @@ window.DCRP = {
     copyToClipboard,
     formatUpstream,
     validateForm,
-    handleFormSubmission
+    handleFormSubmission,
+    applyTheme
 };

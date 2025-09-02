@@ -1,3 +1,4 @@
 # DCRP Web UI Dependencies - Simplified versions
 Flask
 httpx
+requests

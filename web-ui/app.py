@@ -7,9 +7,11 @@ Provides a clean web interface for route management
 import os
 import logging
 from typing import Optional, Dict, List, Any
+from datetime import datetime
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 import httpx
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -26,6 +28,34 @@ DEBUG_MODE = os.environ.get('DEBUG', 'false').lower() == 'true'
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dcrp-default-secret-change-in-production')
+
+@app.context_processor
+def inject_file_info():
+    """Inject file modification times for templates"""
+    def get_current_template_mtime():
+        try:
+            # Try to get the template name from request endpoint
+            endpoint = request.endpoint
+            template_map = {
+                'dashboard': 'dashboard.html',
+                'new_route_form': 'route_form.html', 
+                'edit_route_form': 'route_form.html',
+                'hosts_dashboard': 'hosts.html',
+                'new_host_form': 'host_form.html',
+                'edit_host_form': 'host_form.html'
+            }
+            
+            template_name = template_map.get(endpoint, 'base.html')
+            template_path = os.path.join(app.template_folder, template_name)
+            
+            if os.path.exists(template_path):
+                mtime = os.path.getmtime(template_path)
+                return datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M UTC')
+            return "Unknown"
+        except Exception:
+            return "Unknown"
+    
+    return dict(current_template_mtime=get_current_template_mtime())
 
 class APIClient:
     """Client for communicating with DCRP API Server"""
@@ -77,6 +107,32 @@ class APIClient:
     async def delete_route(self, route_id: str) -> Dict[str, Any]:
         """Delete a route"""
         return await self._request('DELETE', f'/routes/{route_id}')
+    
+    # Hosts management methods
+    async def list_hosts(self) -> List[Dict[str, Any]]:
+        """Get all configured hosts"""
+        result = await self._request('GET', '/hosts')
+        return result if isinstance(result, list) else []
+    
+    async def get_host(self, host_id: str) -> Dict[str, Any]:
+        """Get specific host details"""
+        return await self._request('GET', f'/hosts/{host_id}')
+    
+    async def create_host(self, host_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new host"""
+        return await self._request('POST', '/hosts', json=host_data)
+    
+    async def update_host(self, host_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+        """Update existing host"""
+        return await self._request('PATCH', f'/hosts/{host_id}', json=updates)
+    
+    async def delete_host(self, host_id: str) -> Dict[str, Any]:
+        """Remove a host"""
+        return await self._request('DELETE', f'/hosts/{host_id}')
+    
+    async def test_host_connection(self, host_id: str) -> Dict[str, Any]:
+        """Test connection to a host"""
+        return await self._request('POST', f'/hosts/{host_id}/test')
 
 # Initialize API client
 api_client = APIClient()
@@ -136,14 +192,14 @@ def create_route():
     try:
         route_data = {
             'host': request.form.get('host', '').strip(),
-            'upstream': request.form.get('upstream', '').strip(),
-            'route_id': request.form.get('route_id', '').strip() or None,
-            'force_ssl': 'force_ssl' in request.form,
-            'websocket': 'websocket' in request.form
+            'upstream_protocol': request.form.get('protocol', 'http'),
+            'upstream_host': request.form.get('hostname', '').strip(),
+            'upstream_port': int(request.form.get('port', 80)),
+            'route_id': request.form.get('route_id', '').strip() or None
         }
         
         # Validation
-        if not route_data['host'] or not route_data['upstream']:
+        if not route_data['host'] or not route_data['upstream_host'] or not route_data['upstream_port']:
             flash('Host and upstream are required', 'error')
             return redirect(url_for('new_route_form'))
         
@@ -162,11 +218,14 @@ def update_route(route_id):
     try:
         updates = {}
         
-        if request.form.get('upstream'):
-            updates['upstream'] = request.form.get('upstream').strip()
+        if request.form.get('hostname'):
+            updates['upstream_host'] = request.form.get('hostname').strip()
+            
+        if request.form.get('port'):
+            updates['upstream_port'] = int(request.form.get('port'))
         
-        updates['force_ssl'] = 'force_ssl' in request.form
-        updates['websocket'] = 'websocket' in request.form
+        if request.form.get('protocol'):
+            updates['upstream_protocol'] = request.form.get('protocol')
         
         result = safe_async(api_client.update_route(route_id, updates))
         flash(f"Route updated successfully: {route_id}", 'success')
@@ -229,6 +288,162 @@ def internal_error(error):
     return render_template('error.html', 
                          error_code=500, 
                          error_message="Internal server error"), 500
+
+# Hosts management routes
+@app.route('/hosts')
+def hosts_dashboard():
+    """Hosts management dashboard"""
+    try:
+        hosts = safe_async(api_client.list_hosts())
+        return render_template('hosts.html', hosts=hosts)
+    except Exception as e:
+        logger.error(f"Error loading hosts: {e}")
+        flash(f"Error loading hosts: {e}", 'error')
+        return render_template('hosts.html', hosts=[])
+
+@app.route('/hosts/new')
+def new_host_form():
+    """Show form for adding new host"""
+    return render_template('host_form.html', host=None, action='create')
+
+@app.route('/hosts/<host_id>/edit')
+def edit_host_form(host_id):
+    """Show form for editing existing host"""
+    try:
+        host = safe_async(api_client.get_host(host_id))
+        return render_template('host_form.html', host=host, action='edit')
+    except Exception as e:
+        logger.error(f"Error loading host {host_id}: {e}")
+        flash(f"Error loading host: {e}", 'error')
+        return redirect(url_for('hosts_dashboard'))
+
+@app.route('/hosts', methods=['POST'])
+def create_host():
+    """Handle host creation form submission"""
+    try:
+        host_data = {
+            'host_id': request.form.get('host_id', '').strip(),
+            'hostname': request.form.get('hostname', '').strip(),
+            'user': request.form.get('user', '').strip(),
+            'port': int(request.form.get('port', 22)),
+            'key_file': request.form.get('key_file', '').strip(),
+            'description': request.form.get('description', '').strip(),
+            'enabled': 'enabled' in request.form
+        }
+        
+        # Validation
+        if not host_data['host_id'] or not host_data['hostname']:
+            flash('Host ID and hostname are required', 'error')
+            return redirect(url_for('new_host_form'))
+        
+        result = safe_async(api_client.create_host(host_data))
+        flash(f"Host added successfully: {host_data['host_id']}", 'success')
+        return redirect(url_for('hosts_dashboard'))
+        
+    except Exception as e:
+        logger.error(f"Error creating host: {e}")
+        flash(f"Error creating host: {e}", 'error')
+        return redirect(url_for('new_host_form'))
+
+@app.route('/hosts/<host_id>', methods=['POST'])
+def update_host(host_id):
+    """Handle host update form submission"""
+    try:
+        updates = {
+            'hostname': request.form.get('hostname', '').strip(),
+            'user': request.form.get('user', '').strip(),
+            'port': int(request.form.get('port', 22)),
+            'key_file': request.form.get('key_file', '').strip(),
+            'description': request.form.get('description', '').strip(),
+            'enabled': 'enabled' in request.form
+        }
+        
+        result = safe_async(api_client.update_host(host_id, updates))
+        flash(f"Host updated successfully: {host_id}", 'success')
+        return redirect(url_for('hosts_dashboard'))
+        
+    except Exception as e:
+        logger.error(f"Error updating host {host_id}: {e}")
+        flash(f"Error updating host: {e}", 'error')
+        return redirect(url_for('edit_host_form', host_id=host_id))
+
+@app.route('/hosts/<host_id>/delete', methods=['POST'])
+def delete_host(host_id):
+    """Handle host deletion"""
+    try:
+        result = safe_async(api_client.delete_host(host_id))
+        flash(f"Host removed successfully: {host_id}", 'success')
+    except Exception as e:
+        logger.error(f"Error deleting host {host_id}: {e}")
+        flash(f"Error deleting host: {e}", 'error')
+    
+    return redirect(url_for('hosts_dashboard'))
+
+@app.route('/hosts/<host_id>/test', methods=['POST'])
+def test_host(host_id):
+    """Test connection to host"""
+    try:
+        result = safe_async(api_client.test_host_connection(host_id))
+        flash(f"Host connection test successful: {host_id}", 'success')
+    except Exception as e:
+        logger.error(f"Error testing host {host_id}: {e}")
+        flash(f"Host connection test failed: {e}", 'error')
+    
+    return redirect(url_for('hosts_dashboard'))
+
+# API endpoints for logging
+@app.route('/api/logs')
+def api_logs():
+    """Get logs for AJAX requests"""
+    try:
+        log_type = request.args.get('log_type', 'access')
+        lines = int(request.args.get('lines', '100'))
+        route_id = request.args.get('route_id')
+        
+        # Build query parameters
+        params = {'log_type': log_type, 'lines': lines}
+        if route_id:
+            params['route_id'] = route_id
+        
+        response = requests.get(f"{API_BASE_URL}/api/logs", params=params, timeout=10)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except Exception as e:
+        logger.error(f"API logs error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stats/routes')
+def api_stats_routes():
+    """Get route statistics for AJAX requests"""
+    try:
+        response = requests.get(f"{API_BASE_URL}/api/stats/routes", timeout=10)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except Exception as e:
+        logger.error(f"API stats error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stats/route/<route_id>')
+def api_stats_route(route_id):
+    """Get statistics for a specific route"""
+    try:
+        response = requests.get(f"{API_BASE_URL}/api/stats/route/{route_id}", timeout=10)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except Exception as e:
+        logger.error(f"API stats error for route {route_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# API endpoints for hosts
+@app.route('/api/hosts')
+def api_hosts():
+    """Get hosts list for AJAX requests"""
+    try:
+        hosts = safe_async(api_client.list_hosts())
+        return jsonify(hosts)
+    except Exception as e:
+        logger.error(f"API hosts error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # Template filters
 @app.template_filter('status_badge')

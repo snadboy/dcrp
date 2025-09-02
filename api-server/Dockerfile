@@ -14,10 +14,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY main.py .
 
-# Create non-root user
-RUN groupadd -r apiuser && useradd -r -g apiuser apiuser && \
-    chown -R apiuser:apiuser /app
-USER apiuser
+# Create non-root user (commented out for log file access)
+# RUN groupadd -r apiuser && useradd -r -g apiuser apiuser && \
+#     chown -R apiuser:apiuser /app
+# USER apiuser
 
 # Expose port
 EXPOSE 8000
