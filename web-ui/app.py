@@ -38,6 +38,7 @@ def inject_file_info():
             endpoint = request.endpoint
             template_map = {
                 'dashboard': 'dashboard.html',
+                'routes': 'routes.html',
                 'new_route_form': 'route_form.html', 
                 'edit_route_form': 'route_form.html',
                 'hosts_dashboard': 'hosts.html',
@@ -169,6 +170,17 @@ def dashboard():
                              health={'status': 'error'}, 
                              routes=[],
                              error=str(e))
+
+@app.route('/routes')
+def routes():
+    """Routes page showing all routes"""
+    try:
+        routes = safe_async(api_client.list_routes())
+        return render_template('routes.html', routes=routes)
+    except Exception as e:
+        logger.error(f"Routes page error: {e}")
+        flash(f"Error loading routes: {e}", 'error')
+        return render_template('routes.html', routes=[], error=str(e))
 
 @app.route('/routes/new')
 def new_route_form():

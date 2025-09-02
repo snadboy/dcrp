@@ -25,21 +25,21 @@
     </div>
     <div class="card-body p-0">
         {% if hosts %}
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
+        <div class="table-container">
+            <table id="hosts-table" class="sortable-resizable-table table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>Host ID</th>
-                        <th>Connection</th>
-                        <th>SSH Details</th>
-                        <th>Status</th>
-                        <th>Description</th>
-                        <th width="200">Actions</th>
+                        <th class="sortable" data-sort="host_id">Host ID</th>
+                        <th class="sortable" data-sort="hostname">Connection</th>
+                        <th class="sortable" data-sort="user">SSH Details</th>
+                        <th class="sortable" data-sort="status">Status</th>
+                        <th class="sortable" data-sort="description">Description</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="hosts-table-body">
                     {% for host in hosts %}
-                    <tr>
+                    <tr data-host-id="{{ host.host_id }}" data-hostname="{{ host.hostname }}" data-user="{{ host.user }}" data-status="{{ host.status }}" data-description="{{ host.description or '' }}">
                         <td>
                             <div class="d-flex align-items-center">
                                 <i class="bi bi-hdd-network me-2 text-primary"></i>
@@ -85,9 +85,9 @@
                                     <span class="badge bg-danger" title="{{ host.status[6:] }}">
                                         <i class="bi bi-exclamation-triangle me-1"></i>Connection Error
                                     </span>
-                                    <small class="text-danger" style="max-width: 200px; word-wrap: break-word;">
-                                        {{ host.status[6:][:50] }}{% if host.status[6:]|length > 50 %}...{% endif %}
-                                    </small>
+                                    <div class="error-message-container">
+                                        <small class="text-danger error-message-full">{{ host.status[6:] }}</small>
+                                    </div>
                                 {% elif host.status == 'connected' %}
                                     <span class="badge bg-success">
                                         <i class="bi bi-check-circle me-1"></i>Connected
@@ -189,7 +189,37 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- DCRP Hosts JavaScript (uses snadboy-table-lib) -->
 <script>
+// Initialize the sortable resizable table for hosts
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.getElementById('hosts-table');
+    if (table) {
+        new SortableResizableTable('#hosts-table', {
+            // Custom sorting functions for different data types
+            sortFunctions: {
+                'host_id': (a, b) => a.getAttribute('data-host-id').localeCompare(b.getAttribute('data-host-id')),
+                'hostname': (a, b) => a.getAttribute('data-hostname').localeCompare(b.getAttribute('data-hostname')),
+                'user': (a, b) => a.getAttribute('data-user').localeCompare(b.getAttribute('data-user')),
+                'status': (a, b) => {
+                    const statusA = a.getAttribute('data-status');
+                    const statusB = b.getAttribute('data-status');
+                    // Sort by status priority: connected > error > disabled > unknown
+                    const priority = {'connected': 0, 'error': 1, 'disabled': 2, 'unknown': 3};
+                    const prioA = statusA.startsWith('error') ? priority['error'] : (priority[statusA] || 99);
+                    const prioB = statusB.startsWith('error') ? priority['error'] : (priority[statusB] || 99);
+                    return prioA - prioB;
+                },
+                'description': (a, b) => {
+                    const descA = a.getAttribute('data-description') || '';
+                    const descB = b.getAttribute('data-description') || '';
+                    return descA.localeCompare(descB);
+                }
+            }
+        });
+    }
+});
+
 function confirmDeleteHost(hostId, hostname) {
     document.getElementById('delete-hostname').textContent = hostname;
     document.getElementById('delete-host-id').textContent = hostId;
@@ -224,4 +254,41 @@ function refreshHosts() {
 // Auto-refresh every 60 seconds
 setInterval(refreshHosts, 60000);
 </script>
+
+<style>
+/* Hosts table specific styles */
+.error-message-full {
+    display: block;
+    max-width: 400px;
+    word-wrap: break-word;
+    white-space: normal;
+    line-height: 1.3;
+    user-select: text;
+    cursor: text;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    font-size: 0.8em;
+    background-color: rgba(220, 53, 69, 0.05);
+    padding: 4px 6px;
+    border-radius: 4px;
+    border-left: 3px solid rgba(220, 53, 69, 0.3);
+}
+
+/* Table layout improvements for hosts */
+#hosts-table th:nth-child(1) { min-width: 120px; } /* Host ID */
+#hosts-table th:nth-child(2) { min-width: 150px; } /* Connection */
+#hosts-table th:nth-child(3) { min-width: 130px; } /* SSH Details */
+#hosts-table th:nth-child(4) { min-width: 200px; } /* Status */
+#hosts-table th:nth-child(5) { min-width: 120px; } /* Description */
+#hosts-table th:nth-child(6) { min-width: 200px; } /* Actions */
+
+/* Column resize handle styling improvements */
+.resize-handle {
+    background: rgba(108, 117, 125, 0.2) !important;
+    transition: background-color 0.2s ease;
+}
+
+.resize-handle:hover {
+    background: rgba(108, 117, 125, 0.4) !important;
+}
+</style>
 {% endblock %}
