@@ -53,6 +53,7 @@ services:
       - CONFIG_PATH=/config
     volumes:
       - ./config:/config
+      - ./ssh-keys:/app/ssh-keys:ro
       - api_logs:/var/log/dcrp
       - caddy_logs:/var/log/caddy:ro
     networks:

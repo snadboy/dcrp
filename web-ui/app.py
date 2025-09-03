@@ -401,7 +401,14 @@ def test_host(host_id):
         logger.error(f"Error testing host {host_id}: {e}")
         flash(f"Host connection test failed: {e}", 'error')
     
-    return redirect(url_for('hosts_dashboard'))
+    # Check where the request came from and redirect back there
+    referer = request.headers.get('Referer', '')
+    if f'/hosts/{host_id}/edit' in referer:
+        # If from edit page, redirect back to edit page
+        return redirect(url_for('edit_host_form', host_id=host_id))
+    else:
+        # Otherwise redirect to hosts dashboard
+        return redirect(url_for('hosts_dashboard'))
 
 # API endpoints for logging
 @app.route('/api/logs')

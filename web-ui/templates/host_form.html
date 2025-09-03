@@ -177,20 +177,24 @@
                         <a href="{{ url_for('hosts_dashboard') }}" class="btn btn-secondary">
                             Cancel
                         </a>
-                        {% if action == 'edit' %}
-                        <button type="button" 
-                                class="btn btn-outline-info ms-auto"
-                                onclick="testConnection('{{ host.host_id }}')">
-                            <i class="bi bi-wifi me-1"></i>Test Connection
-                        </button>
-                        <button type="button" 
-                                class="btn btn-outline-danger"
-                                onclick="confirmDelete('{{ host.host_id }}', '{{ host.hostname }}')">
-                            <i class="bi bi-trash me-1"></i>Remove Host
-                        </button>
-                        {% endif %}
                     </div>
                 </form>
+                
+                <!-- Test and Delete buttons outside the form to prevent form submission -->
+                {% if action == 'edit' %}
+                <div class="d-flex gap-2 mt-3">
+                    <form method="post" action="{{ url_for('test_host', host_id=host.host_id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-info">
+                            <i class="bi bi-wifi me-1"></i>Test Connection
+                        </button>
+                    </form>
+                    <button type="button" 
+                            class="btn btn-outline-danger ms-auto"
+                            onclick="confirmDelete('{{ host.host_id }}', '{{ host.hostname }}')">
+                        <i class="bi bi-trash me-1"></i>Remove Host
+                    </button>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -295,21 +299,6 @@ function updatePreview() {
     document.getElementById('preview-description').textContent = description;
 }
 
-function testConnection(hostId) {
-    // Show loading state
-    const button = event.target;
-    const originalHtml = button.innerHTML;
-    button.disabled = true;
-    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Testing...';
-    
-    // Create form and submit
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `/hosts/${hostId}/test`;
-    form.style.display = 'none';
-    document.body.appendChild(form);
-    form.submit();
-}
 
 function confirmDelete(hostId, hostname) {
     const modal = new bootstrap.Modal(document.getElementById('deleteModal'));

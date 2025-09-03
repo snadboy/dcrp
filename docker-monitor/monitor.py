@@ -197,6 +197,8 @@ class DockerMonitor:
                 '-i', ssh_key,
                 '-p', str(ssh_port),
                 '-o', 'StrictHostKeyChecking=no',
+                '-o', 'UserKnownHostsFile=/dev/null',
+                '-o', 'CanonicalizeHostname=no',
                 '-o', 'ConnectTimeout=10',
                 f'{ssh_user}@{ssh_hostname}',
                 'docker', 'ps', '--format', 'json'

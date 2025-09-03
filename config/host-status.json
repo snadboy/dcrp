@@ -1,20 +1,20 @@
 {
   "dev": {
     "status": "error",
-    "message": "SSH connection failed: ssh: connect to host host-dev.isnadboy.com port 22: Connection refused",
-    "last_check": "2025-09-02T03:27:08.439368",
+    "message": "SSH connection failed: Permission denied, please try again.\r\nPermission denied, please try again.\r\nrevp@192.168.86.78: Permission denied (publickey,password).",
+    "last_check": "2025-09-03T15:07:29.455276",
     "last_success": null
   },
   "media-arr": {
-    "status": "error",
-    "message": "SSH connection failed: ssh: connect to host host-media-arr.isnadboy.com port 22: Connection refused",
-    "last_check": "2025-09-02T03:27:08.507424",
-    "last_success": "2025-08-31T04:06:32.791977"
+    "status": "success",
+    "message": "Connected successfully",
+    "last_check": "2025-09-03T15:07:29.707387",
+    "last_success": "2025-09-03T15:07:29.707399"
   },
   "fabric": {
     "status": "success",
     "message": "Connected successfully",
-    "last_check": "2025-09-02T03:27:08.931277",
-    "last_success": "2025-09-02T03:27:08.931289"
+    "last_check": "2025-09-03T15:07:30.033176",
+    "last_success": "2025-09-03T15:07:30.033184"
   }
 }
