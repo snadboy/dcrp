@@ -1,6 +1,14 @@
 // DCRP Hosts JavaScript - Working DataGrid implementation
 console.log('Hosts JS loaded - working DataGrid implementation');
 
+// Define getCurrentTheme globally so observer can access it
+function getCurrentTheme() {
+    const html = document.documentElement;
+    const theme = html.getAttribute('data-bs-theme');
+    // Handle null, undefined, 'light' as empty (light theme)
+    return theme === 'dark' ? 'dark' : '';
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, checking for container and hosts data');
 
@@ -31,16 +39,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     try {
         console.log('Creating hosts DataGrid...');
-        
-        // Detect current theme
-        function getCurrentTheme() {
-            const html = document.documentElement;
-            if (html.getAttribute('data-bs-theme') === 'dark') {
-                return 'dark';
-            } else {
-                return '';
-            }
-        }
         
         const grid = new DataGrid('#hosts-datagrid', {
             columns: [

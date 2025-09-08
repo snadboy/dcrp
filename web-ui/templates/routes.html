@@ -25,82 +25,14 @@
     </div>
     <div class="card-body p-0">
         {% if routes %}
-        <div class="table-container">
-            <table id="routes-table" class="sortable-resizable-table table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="sortable" data-sort="source">Source</th>
-                        <th class="sortable" data-sort="host">Host</th>
-                        <th class="sortable" data-sort="upstream">Upstream</th>
-                        <th class="sortable" data-sort="route_id">Route ID</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="routes-table-body">
-                    {% for route in routes %}
-                    <tr data-source="{{ route.source }}" data-host="{{ route.host }}" data-upstream="{{ route.upstream }}" data-route-id="{{ route.route_id }}">
-                        <td data-label="Source">
-                            {% if route.source == 'monitor' %}
-                                <span class="badge bg-success" title="Auto-discovered from Docker container">
-                                    <i class="bi bi-robot me-1"></i>Auto
-                                </span>
-                            {% else %}
-                                <span class="badge bg-primary" title="Manually created route">
-                                    <i class="bi bi-person-gear me-1"></i>Manual
-                                </span>
-                            {% endif %}
-                        </td>
-                        <td data-label="Host">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-globe me-2 text-primary flex-shrink-0"></i>
-                                <div class="host-content" style="min-width: 0; flex: 1;">
-                                    <div class="fw-semibold text-truncate" title="{{ route.host }}" style="max-width: 100%;">{{ route.host }}</div>
-                                    <small class="text-muted">Index: {{ route.index }}</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td data-label="Upstream">
-                            <div class="d-flex align-items-center">
-                                {% if route.protocol == 'https' %}
-                                    <i class="bi bi-shield-lock text-success me-1 flex-shrink-0" title="HTTPS Backend"></i>
-                                {% else %}
-                                    <i class="bi bi-globe text-primary me-1 flex-shrink-0" title="HTTP Backend"></i>
-                                {% endif %}
-                                <code class="text-success text-truncate" title="{{ route.protocol.upper() }}://{{ route.upstream }}" style="max-width: 100%;">{{ route.protocol.upper() }}://{{ route.upstream }}</code>
-                            </div>
-                        </td>
-                        <td data-label="Route ID">
-                            <code class="small text-muted">{{ route.route_id }}</code>
-                        </td>
-                        <td data-label="Actions">
-                            {% if route.source == 'monitor' %}
-                                <div class="d-flex align-items-center">
-                                    <button class="btn btn-sm btn-outline-secondary" disabled title="Managed by Docker Monitor">
-                                        <i class="bi bi-gear"></i>
-                                    </button>
-                                    <small class="text-muted ms-2">Managed by Docker Monitor</small>
-                                </div>
-                            {% else %}
-                                <div class="btn-group" role="group">
-                                    <a href="{{ url_for('edit_route_form', route_id=route.route_id) }}" 
-                                       class="btn btn-sm btn-outline-primary" title="Edit Route">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <button class="btn btn-sm btn-outline-danger" 
-                                            title="Delete Route"
-                                            onclick="confirmDelete('{{ route.route_id }}', '{{ route.host }}')">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <div id="routes-datagrid" class="datagrid-container"></div>
+        
+        <!-- Hidden data for JavaScript -->
+        <script id="routes-data" type="application/json">
+        {{ routes | tojson }}
+        </script>
         {% else %}
-        <div class="text-center py-5">
+        <div class="text-center py-5" id="no-routes-message">
             <div class="text-muted">
                 <i class="bi bi-inbox display-1"></i>
                 <h4 class="mt-3">No routes configured</h4>
@@ -142,39 +74,14 @@
 
 {% endblock %}
 
+{% block head %}
+<!-- Routes specific CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/routes.css') }}">
+{% endblock %}
+
 {% block scripts %}
-<!-- DCRP Dashboard JavaScript (uses snadboy-table-lib) -->
+<!-- Include dashboard functions -->
 <script src="{{ url_for('static', filename='js/dcrp-dashboard.js') }}"></script>
-
-<style>
-/* Ensure icons don't shrink in flex containers */
-.flex-shrink-0 {
-    flex-shrink: 0 !important;
-}
-
-/* Ensure text truncation works in nested flex containers */
-.host-content,
-.text-truncate {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* Improved code elements for upstream URLs */
-.upstream-code {
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-    font-size: 0.875em;
-}
-
-/* Column resize handle styling improvements */
-.resize-handle {
-    background: rgba(108, 117, 125, 0.2) !important;
-    transition: background-color 0.2s ease;
-}
-
-.resize-handle:hover {
-    background: rgba(108, 117, 125, 0.4) !important;
-}
-</style>
+<!-- Routes specific JavaScript -->
+<script src="{{ url_for('static', filename='js/routes.js') }}?v={{ range(10000, 99999) | random }}"></script>
 {% endblock %}

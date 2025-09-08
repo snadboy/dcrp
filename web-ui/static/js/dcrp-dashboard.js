@@ -1,57 +1,8 @@
 // DCRP Dashboard JavaScript
-// Uses snadboy-table-lib for sortable/resizable table functionality
 
-// Global variables
-let routesTable = null;
+// Global variables for shared dashboard functions
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    initializeRoutesTable();
-    startHealthRefresh();
-});
-
-// Initialize the routes table with sorting and resizing
-function initializeRoutesTable() {
-    const table = document.getElementById('routes-table');
-    if (!table) return;
-    
-    routesTable = new SortableResizableTable('#routes-table', {
-        sortCallback: (column, direction) => {
-            sortRoutes(column, direction);
-        }
-    });
-    
-    console.log('Routes table initialized with snadboy-table-lib');
-}
-
-// Sort routes data
-function sortRoutes(column, direction) {
-    const tbody = document.getElementById('routes-table-body');
-    if (!tbody) return;
-    
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    
-    rows.sort((a, b) => {
-        let aVal = a.dataset[column] || '';
-        let bVal = b.dataset[column] || '';
-        
-        // Convert to lowercase for case-insensitive sorting
-        if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-        if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-        
-        let result = 0;
-        if (aVal < bVal) result = -1;
-        else if (aVal > bVal) result = 1;
-        
-        return direction === 'desc' ? -result : result;
-    });
-    
-    // Re-append sorted rows
-    tbody.innerHTML = '';
-    rows.forEach(row => tbody.appendChild(row));
-    
-    console.log(`Routes sorted by ${column} ${direction}`);
-}
+// Utility functions that can be used by both hosts and routes pages
 
 // Delete confirmation modal
 function confirmDelete(routeId, host) {
@@ -128,6 +79,17 @@ function updateStatusIndicator(status) {
     }
 }
 
+
+// Auto-refresh health status every 30 seconds
+let healthRefreshInterval;
+function startHealthRefresh() {
+    if (!healthRefreshInterval) {
+        healthRefreshInterval = setInterval(() => {
+            refreshHealth();
+        }, 30000);
+    }
+}
+
 // Refresh routes without page reload
 function refreshRoutes() {
     const refreshBtn = document.querySelector('[onclick="refreshRoutes()"]');
@@ -139,27 +101,10 @@ function refreshRoutes() {
         refreshBtn.disabled = true;
     }
     
-    if (window.DCRP && window.DCRP.showToast) {
-        window.DCRP.showToast('Refreshing routes...', 'info');
-    }
-    
     // For now, just reload the page (can be enhanced later with AJAX)
     setTimeout(() => {
         window.location.reload();
     }, 500);
-}
-
-// Auto-refresh health status every 30 seconds
-let healthRefreshInterval;
-function startHealthRefresh() {
-    if (!healthRefreshInterval) {
-        healthRefreshInterval = setInterval(() => {
-            // Only refresh if not currently resizing table
-            if (!routesTable || !routesTable.isResizing) {
-                refreshHealth();
-            }
-        }, 30000);
-    }
 }
 
 // Expose functions globally for onclick handlers

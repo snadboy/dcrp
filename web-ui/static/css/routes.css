@@ -1,0 +1,92 @@
+/* DCRP Routes CSS - Extracted from routes.html for better architecture */
+/* This file handles all route table styling */
+
+/* Routes datagrid specific styles */
+.flex-shrink-0 {
+    flex-shrink: 0 !important;
+}
+
+/* Make text truncation more specific to avoid DataGrid conflicts */
+.route-host-content,
+.route-text-truncate {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.upstream-code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    font-size: 0.875em;
+}
+
+/* Enhanced DataGrid styles for routes - Don't override core container styles */
+#routes-datagrid.datagrid-container {
+    /* Let DataGrid handle its own width calculations */
+    /* min-width: 100%; - REMOVED: This conflicts with DataGrid's layout system */
+    /* overflow-x: auto; - REMOVED: DataGrid handles overflow internally */
+}
+
+/* Column resize handles */
+.datagrid-header-cell {
+    position: relative;
+}
+
+.datagrid-header-cell.resizable::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    cursor: col-resize;
+    border-right: 2px solid transparent;
+    transition: border-color 0.2s ease;
+}
+
+.datagrid-header-cell.resizable:hover::after {
+    border-right-color: #6c757d;
+}
+
+/* Sortable header styling */
+.datagrid-header-cell.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.datagrid-header-cell.sortable:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Sort indicators */
+.datagrid-header-cell .sort-indicator {
+    margin-left: 4px;
+    font-size: 0.75em;
+    opacity: 0.7;
+}
+
+.datagrid-header-cell.sorted .sort-indicator {
+    opacity: 1;
+    color: #007bff;
+}
+
+/* Mobile responsive styles - Use specific selectors to avoid conflicts */
+@media (max-width: 767px) {
+    #routes-datagrid.datagrid-container {
+        /* DataGrid handles its own overflow - don't override */
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    #routes-datagrid .datagrid-wrapper {
+        /* Let DataGrid calculate its own width - don't force min-width */
+        /* min-width: 850px; - REMOVED: Conflicts with flexible columns (2fr, 1.5fr, 1fr) */
+    }
+}
+
+/* Tablet responsive styles */
+@media (min-width: 768px) and (max-width: 1023px) {
+    #routes-datagrid.datagrid-container {
+        /* DataGrid handles its own overflow */
+    }
+}

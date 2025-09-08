@@ -7,7 +7,7 @@ A modern, modular reverse proxy system built with Caddy, designed for Docker con
 🌐 **Automatic HTTPS** - Cloudflare DNS challenge with Let's Encrypt wildcard certificates  
 🐳 **Container Auto-Discovery** - Automatically create routes for Docker containers with labels  
 🔄 **Real-time Updates** - Dynamic route management via REST API  
-🖥️ **Web Administration** - Clean, responsive web interface with sortable/resizable tables using [snadboy-table-lib](https://github.com/snadboy/snadboy-table-lib)  
+🖥️ **Web Administration** - Clean, responsive web interface  
 🚀 **Multi-Host Support** - SSH-based monitoring of remote Docker hosts  
 ⚡ **High Performance** - Built with FastAPI, Flask, and Caddy  
 🛡️ **Security First** - Force HTTPS, WebSocket support, security headers  
@@ -263,22 +263,6 @@ export API_BASE_URL=http://localhost:8000
 python app.py
 ```
 
-### Table Library Integration
-
-The web UI uses **snadboy-table-lib** for enhanced table functionality:
-
-- **Repository**: https://github.com/snadboy/snadboy-table-lib  
-- **Version**: v1.0.0
-- **Features**: Column sorting, column resizing, zero dependencies
-- **Location**: `web-ui/static/libs/snadboy-table/`
-
-To update the table library:
-```bash
-# Download new version from GitHub releases
-curl -L -o /tmp/table-lib.zip https://github.com/snadboy/snadboy-table-lib/archive/v1.0.0.zip
-unzip /tmp/table-lib.zip
-cp snadboy-table-lib-*/dist/* web-ui/static/libs/snadboy-table/
-```
 
 ## Production Deployment
 

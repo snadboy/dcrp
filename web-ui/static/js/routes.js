@@ -1,6 +1,14 @@
 // DCRP Routes JavaScript - Working DataGrid implementation
 console.log('Routes JS loaded - working DataGrid implementation');
 
+// Define getCurrentTheme globally so observer can access it
+function getCurrentTheme() {
+    const html = document.documentElement;
+    const theme = html.getAttribute('data-bs-theme');
+    // Handle null, undefined, 'light' as empty (light theme)
+    return theme === 'dark' ? 'dark' : '';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, checking for container and routes data');
     
@@ -31,16 +39,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     try {
         console.log('Creating routes DataGrid...');
-        
-        // Detect current theme
-        function getCurrentTheme() {
-            const html = document.documentElement;
-            if (html.getAttribute('data-bs-theme') === 'dark') {
-                return 'dark';
-            } else {
-                return '';
-            }
-        }
         
         // Enhanced configuration with custom renderers and advanced features
         const grid = new DataGrid('#routes-datagrid', {

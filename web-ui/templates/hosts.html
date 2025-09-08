@@ -25,118 +25,14 @@
     </div>
     <div class="card-body p-0">
         {% if hosts %}
-        <div class="table-container">
-            <table id="hosts-table" class="sortable-resizable-table table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="sortable" data-sort="host_id">Host ID</th>
-                        <th class="sortable" data-sort="hostname">Connection</th>
-                        <th class="sortable" data-sort="user">SSH Details</th>
-                        <th class="sortable" data-sort="status">Status</th>
-                        <th class="sortable" data-sort="description">Description</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="hosts-table-body">
-                    {% for host in hosts %}
-                    <tr data-host-id="{{ host.host_id }}" data-hostname="{{ host.hostname }}" data-user="{{ host.user }}" data-status="{{ host.status }}" data-description="{{ host.description or '' }}">
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-hdd-network me-2 text-primary"></i>
-                                <div>
-                                    <div class="fw-semibold">{{ host.host_id }}</div>
-                                    {% if not host.enabled %}
-                                    <span class="badge bg-secondary badge-sm">Disabled</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex flex-column gap-1">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-globe me-1 text-info"></i>
-                                    <code class="small">{{ host.hostname }}</code>
-                                </div>
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-ethernet me-1 text-muted"></i>
-                                    <small class="text-muted">Port {{ host.port }}</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex flex-column gap-1">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-person me-1 text-success"></i>
-                                    <code class="small">{{ host.user }}</code>
-                                </div>
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-key me-1 text-warning"></i>
-                                    <small class="text-muted">{{ host.key_file | replace('/app/ssh-keys/', '') }}</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex flex-column gap-1">
-                                {% if not host.enabled %}
-                                    <span class="badge bg-secondary">
-                                        <i class="bi bi-pause-circle me-1"></i>Disabled
-                                    </span>
-                                {% elif host.status.startswith('error:') %}
-                                    <span class="badge bg-danger" title="{{ host.status[6:] }}">
-                                        <i class="bi bi-exclamation-triangle me-1"></i>Connection Error
-                                    </span>
-                                    <div class="error-message-container">
-                                        <small class="text-danger error-message-full">{{ host.status[6:] }}</small>
-                                    </div>
-                                {% elif host.status == 'connected' %}
-                                    <span class="badge bg-success">
-                                        <i class="bi bi-check-circle me-1"></i>Connected
-                                    </span>
-                                {% elif host.status == 'unknown' %}
-                                    <span class="badge bg-warning">
-                                        <i class="bi bi-question-circle me-1"></i>Unknown
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-info">
-                                        <i class="bi bi-info-circle me-1"></i>{{ host.status }}
-                                    </span>
-                                {% endif %}
-                                {% if host.get('last_seen') %}
-                                <small class="text-muted">{{ host.last_seen | replace('T', ' ') | truncate(19, True, '') }}</small>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="text-muted small">
-                                {{ host.description or 'No description' }}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="btn-group" role="group">
-                                <button class="btn btn-sm btn-outline-info" 
-                                        title="Test Connection"
-                                        onclick="testHost('{{ host.host_id }}')">
-                                    <i class="bi bi-wifi"></i>
-                                </button>
-                                <a href="{{ url_for('edit_host_form', host_id=host.host_id) }}" 
-                                   class="btn btn-sm btn-outline-primary" 
-                                   title="Edit Host">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <button class="btn btn-sm btn-outline-danger" 
-                                        title="Remove Host"
-                                        onclick="confirmDeleteHost('{{ host.host_id }}', '{{ host.hostname }}')">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <div id="hosts-datagrid" class="datagrid-container"></div>
+        
+        <!-- Hidden data for JavaScript -->
+        <script id="hosts-data" type="application/json">
+        {{ hosts | tojson }}
+        </script>
         {% else %}
-        <div class="text-center py-5">
+        <div class="text-center py-5" id="no-hosts-message">
             <div class="text-muted">
                 <i class="bi bi-hdd-network display-1"></i>
                 <h4 class="mt-3">No hosts configured</h4>
@@ -179,6 +75,33 @@
     </div>
 </div>
 
+<!-- Error Details Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="errorModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Connection Error Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="errorModalText" class="form-label fw-bold">Error Message:</label>
+                    <textarea id="errorModalText" class="form-control" rows="8" readonly 
+                              style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 0.9em; background-color: #f8f9fa;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="copyErrorBtn" class="btn btn-secondary" onclick="copyErrorText()">
+                    <i class="bi bi-clipboard me-1"></i>Copy
+                </button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% if error %}
 <div class="alert alert-danger mt-4">
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -188,107 +111,14 @@
 
 {% endblock %}
 
+{% block head %}
+<!-- Hosts specific CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/hosts.css') }}">
+{% endblock %}
+
 {% block scripts %}
-<!-- DCRP Hosts JavaScript (uses snadboy-table-lib) -->
-<script>
-// Initialize the sortable resizable table for hosts
-document.addEventListener('DOMContentLoaded', function() {
-    const table = document.getElementById('hosts-table');
-    if (table) {
-        new SortableResizableTable('#hosts-table', {
-            // Custom sorting functions for different data types
-            sortFunctions: {
-                'host_id': (a, b) => a.getAttribute('data-host-id').localeCompare(b.getAttribute('data-host-id')),
-                'hostname': (a, b) => a.getAttribute('data-hostname').localeCompare(b.getAttribute('data-hostname')),
-                'user': (a, b) => a.getAttribute('data-user').localeCompare(b.getAttribute('data-user')),
-                'status': (a, b) => {
-                    const statusA = a.getAttribute('data-status');
-                    const statusB = b.getAttribute('data-status');
-                    // Sort by status priority: connected > error > disabled > unknown
-                    const priority = {'connected': 0, 'error': 1, 'disabled': 2, 'unknown': 3};
-                    const prioA = statusA.startsWith('error') ? priority['error'] : (priority[statusA] || 99);
-                    const prioB = statusB.startsWith('error') ? priority['error'] : (priority[statusB] || 99);
-                    return prioA - prioB;
-                },
-                'description': (a, b) => {
-                    const descA = a.getAttribute('data-description') || '';
-                    const descB = b.getAttribute('data-description') || '';
-                    return descA.localeCompare(descB);
-                }
-            }
-        });
-    }
-});
-
-function confirmDeleteHost(hostId, hostname) {
-    document.getElementById('delete-hostname').textContent = hostname;
-    document.getElementById('delete-host-id').textContent = hostId;
-    document.getElementById('delete-host-form').action = `/hosts/${hostId}/delete`;
-    
-    const modal = new bootstrap.Modal(document.getElementById('deleteHostModal'));
-    modal.show();
-}
-
-function testHost(hostId) {
-    // Show loading state
-    const button = event.target.closest('button');
-    const originalHtml = button.innerHTML;
-    button.disabled = true;
-    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-    
-    // Create form and submit
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `/hosts/${hostId}/test`;
-    form.style.display = 'none';
-    document.body.appendChild(form);
-    form.submit();
-    
-    // Note: The page will redirect, so we don't need to restore button state
-}
-
-function refreshHosts() {
-    location.reload();
-}
-
-// Auto-refresh every 60 seconds
-setInterval(refreshHosts, 60000);
-</script>
-
-<style>
-/* Hosts table specific styles */
-.error-message-full {
-    display: block;
-    max-width: 400px;
-    word-wrap: break-word;
-    white-space: normal;
-    line-height: 1.3;
-    user-select: text;
-    cursor: text;
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-    font-size: 0.8em;
-    background-color: rgba(220, 53, 69, 0.05);
-    padding: 4px 6px;
-    border-radius: 4px;
-    border-left: 3px solid rgba(220, 53, 69, 0.3);
-}
-
-/* Table layout improvements for hosts */
-#hosts-table th:nth-child(1) { min-width: 120px; } /* Host ID */
-#hosts-table th:nth-child(2) { min-width: 150px; } /* Connection */
-#hosts-table th:nth-child(3) { min-width: 130px; } /* SSH Details */
-#hosts-table th:nth-child(4) { min-width: 200px; } /* Status */
-#hosts-table th:nth-child(5) { min-width: 120px; } /* Description */
-#hosts-table th:nth-child(6) { min-width: 200px; } /* Actions */
-
-/* Column resize handle styling improvements */
-.resize-handle {
-    background: rgba(108, 117, 125, 0.2) !important;
-    transition: background-color 0.2s ease;
-}
-
-.resize-handle:hover {
-    background: rgba(108, 117, 125, 0.4) !important;
-}
-</style>
+<!-- Include dashboard functions -->
+<script src="{{ url_for('static', filename='js/dcrp-dashboard.js') }}"></script>
+<!-- Hosts specific JavaScript -->
+<script src="{{ url_for('static', filename='js/hosts.js') }}?v={{ range(10000, 99999) | random }}"></script>
 {% endblock %}

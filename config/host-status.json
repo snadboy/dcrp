@@ -1,20 +1,20 @@
 {
   "dev": {
     "status": "error",
-    "message": "SSH connection failed: Permission denied, please try again.\r\nPermission denied, please try again.\r\nrevp@192.168.86.78: Permission denied (publickey,password).",
-    "last_check": "2025-09-03T15:07:29.455276",
+    "message": "SSH connection failed: Warning: Permanently added '192.168.86.78' (ED25519) to the list of known hosts.\r\nPermission denied, please try again.\r\nPermission denied, please try again.\r\nrevp@192.168.86.78: Permission denied (publickey,password).",
+    "last_check": "2025-09-08T21:30:13.359247",
     "last_success": null
   },
   "media-arr": {
     "status": "success",
     "message": "Connected successfully",
-    "last_check": "2025-09-03T15:07:29.707387",
-    "last_success": "2025-09-03T15:07:29.707399"
+    "last_check": "2025-09-08T21:30:13.719349",
+    "last_success": "2025-09-08T21:30:13.719359"
   },
   "fabric": {
     "status": "success",
     "message": "Connected successfully",
-    "last_check": "2025-09-03T15:07:30.033176",
-    "last_success": "2025-09-03T15:07:30.033184"
+    "last_check": "2025-09-08T21:30:14.063250",
+    "last_success": "2025-09-08T21:30:14.063266"
   }
 }
